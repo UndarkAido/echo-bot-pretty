@@ -88,11 +88,7 @@ int main(){
 				        << "!\n"
 				        << "I'm a simple bot meant to demonstrate the Discord++ library.\n"
 				        << "You can learn more about Discord++ at https://discord.gg/0usP6xmT4sQ4kIDh";
-				bot->call(
-						"POST",
-						"/channels/" + msg["channel_id"].get<std::string>() + "/messages",
-						json({{"content", content.str()}})
-				);
+				bot->sendMessage(msg["channel_id"].get<std::string>(), content.str());
 			}
 	);
 
@@ -122,32 +118,27 @@ int main(){
 							}
 
 							// Echo the created message
-							bot->call(
-									"POST",
-									"/channels/" + msg["channel_id"].get<std::string>() + "/messages",
-									json({{"content", content}})
-							);
+							bot->sendMessage(msg["channel_id"].get<std::string>(), content);
 
 							// Set status to Playing "with [author]"
-							bot->send(
-									3, {
-											{
-													"game",   {
-															          {
-																	          "name", "with " + (
-																	          msg["member"]["nick"].is_null()
-																	          ? msg["author"]["username"].get<std::string>()
-																	          : msg["member"]["nick"].get<std::string>()
-															          )
-															          },
-															          {"type", 0}
-													          }
-											},
-											{       "status", "online"},
-											{       "afk",    false},
-											{       "since",  "null"}
-									}
-							);
+							dpp::Activity activity;
+							{
+								activity.name =  (
+										msg["member"]["nick"].is_null()
+										? msg["author"]["username"].get<std::string>()
+										: msg["member"]["nick"].get<std::string>()
+								);
+								activity.type = dpp::Activity::Listening;
+								activity.created_at = std::time(nullptr);
+							}
+							dpp::Status status;
+							{
+								status.since = 0;
+								status.game = activity;
+								status.status = dpp::Status::online;
+								status.afk = false;
+							}
+							bot->setStatus(status);
 						}
 					}
 			}
