@@ -13,3 +13,6 @@
 [submodule "lib/plugin-responder"]
 	path = lib/plugin-responder
 	url = https://github.com/DiscordPP/plugin-responder.git
+[submodule "lib/plugin-pretty"]
+	path = lib/plugin-pretty
+	url = https://github.com/DiscordPP/plugin-pretty.git
