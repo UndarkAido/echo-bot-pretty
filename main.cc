@@ -60,7 +60,9 @@ int main(){
 	// Create Bot object
 	auto bot = std::make_shared<DppBot>();
 	// Don't complain about unhandled events
-	bot->debugUnhandled = false;
+    bot->debugUnhandled = false;
+    // Store Status
+    dpp::Status status;
 
 	/*/
 	 * Create handler for the READY payload, this may be handled by the bot in the future.
@@ -88,15 +90,31 @@ int main(){
 				        << "!\n"
 				        << "I'm a simple bot meant to demonstrate the Discord++ library.\n"
 				        << "You can learn more about Discord++ at https://discord.gg/0usP6xmT4sQ4kIDh";
-				bot->sendMessage(msg["channel_id"].get<std::string>(), content.str());
+                bot->sendMessage(msg["channel_id"], content.str());
 			}
 	);
+
+    bot->respond(
+            "stream", [&bot, &status](json msg){
+                    if (status.game.type == dpp::Activity::Streaming) {
+                        bot->sendMessage(msg["channel_id"], "I am already streaming!");
+                    } else {
+                        status.game.type = dpp::Activity::Streaming;
+                        status.game.name = "Twitch";
+                        status.game.state = "Rocket League";
+                        status.game.details = "24H RL Stream for Charity";
+                        status.game.url = "https://www.twitch.tv/discord";
+                        bot->setStatus(status);
+                        bot->sendMessage(msg["channel_id"], "Okay, I am streaming now...");
+                    }
+            }
+    );
 
 	// Create handler for the MESSAGE_CREATE payload, this receives all messages sent that the bot can see.
 	bot->handlers.insert(
 			{
 					"MESSAGE_CREATE",
-					[&bot, &self](json msg){
+                    [&bot, &self, &status](json msg){
 						// Scan through mentions in the message for self
 						bool mentioned = false;
 						for(const json &mention : msg["mentions"]){
@@ -105,8 +123,8 @@ int main(){
 						if(mentioned){
 							// Identify and remove mentions of self from the message
 							std::string content = msg["content"];
-							std::string mentioncode = "<@" + self["id"].get<std::string>() + ">";
-							std::string nickedcode = "<@!" + self["id"].get<std::string>() + ">";
+                            std::string mentioncode = "<@" + self["id"].get<std::string>() + ">";
+                            std::string nickedcode = "<@!" + self["id"].get<std::string>() + ">";
 							filter(content, mentioncode + ' ');
 							filter(content, nickedcode + ' ');
 							filter(content, mentioncode);
@@ -118,27 +136,16 @@ int main(){
 							}
 
 							// Echo the created message
-							bot->sendMessage(msg["channel_id"].get<std::string>(), content);
+                            bot->sendMessage(msg["channel_id"], content);
 
-							// Set status to Playing "with [author]"
-							dpp::Activity activity;
-							{
-								activity.name =  (
-										msg["member"]["nick"].is_null()
-										? msg["author"]["username"].get<std::string>()
-										: msg["member"]["nick"].get<std::string>()
-								);
-								activity.type = dpp::Activity::Listening;
-								activity.created_at = std::time(nullptr);
-							}
-							dpp::Status status;
-							{
-								status.since = 0;
-								status.game = activity;
-								status.status = dpp::Status::online;
-								status.afk = false;
-							}
-							bot->setStatus(status);
+                            // Set status to listening to "[author]"
+                            status.game.type = dpp::Activity::Listening;
+                            status.game.name = (
+                                                msg["member"]["nick"].is_null()
+                                                ? msg["author"]["username"].get<std::string>()
+                                                : msg["member"]["nick"].get<std::string>()
+                                               );
+                            bot->setStatus(status);
 						}
 					}
 			}
@@ -151,7 +158,10 @@ int main(){
 	bot->initBot(6, token, aioc);
 
 	// Run the bot!
-	bot->run();
+    bot->run();
+
+    // Send status once
+    bot->setStatus(status);
 
 	return 0;
 }
